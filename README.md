@@ -1,4 +1,4 @@
-# game-of-life-vhdl
+# Game-Of-Life-VHDL
 
 This repository contains a VHDL-based implementation of Conway's Game of Life and is intended to be developed using Xilinx Vivado.
 
