@@ -26,7 +26,7 @@ This project is organized as a small FPGA-oriented VHDL design with:
 
 Before starting development, make sure the following are installed:
 
-- Xilinx Vivado (recommended: 2023.x or newer)
+- Xilinx Vivado (recommended: 2018.x or newer)
 - Git
 - A compatible FPGA board support package if you plan to target hardware
 
@@ -40,7 +40,7 @@ Optional tools:
 1. Clone the repository:
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/SSasindu/game-of-life-vhdl.git
    cd game-of-life-vhdl
    ```
 
