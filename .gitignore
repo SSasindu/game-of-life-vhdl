@@ -1,0 +1,25 @@
+# Vivado generated files and temporary folders
+**/*.cache/
+**/.hw/
+**/.gen/
+**/.runs/
+**/.sim/
+**/.ip_user_files/
+**/.Xil/
+**/*.hw/
+**/*.sim/
+**/*.ip_user_files/
+**/*.runs/
+
+*.jou
+*.log
+*.pb
+*.str
+*.wdb
+*.tmp
+
+*.bit
+*.bin
+*.ltx
+
+*.xpr.user
