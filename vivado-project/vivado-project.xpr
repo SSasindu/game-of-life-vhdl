@@ -3,7 +3,7 @@
 <!--                                                         -->
 <!-- Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.   -->
 
-<Project Version="7" Minor="36" Path="E:/gitRepo/game-of-life-vhdl/vivado-project/vivado-project.xpr">
+<Project Version="7" Minor="36" Path="D:/Git_repos/game-of-life-vhdl/vivado-project/vivado-project.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="51d64bfa478749e8be2c00df81aa0404"/>
@@ -90,16 +90,13 @@
     </FileSet>
     <FileSet Name="constrs_1" Type="Constrs" RelSrcDir="$PSRCDIR/constrs_1">
       <Filter Type="Constrs"/>
-      <File Path="$PSRCDIR/constrs_1/imports/Downloads/Basys3_Master.xdc">
+      <File Path="$PPRDIR/../constraints/Basys3_Master.xdc">
         <FileInfo>
-          <Attr Name="ImportPath" Val="C:/Users/User/Downloads/Basys3_Master.xdc"/>
-          <Attr Name="ImportTime" Val="1785839871"/>
           <Attr Name="UsedIn" Val="synthesis"/>
           <Attr Name="UsedIn" Val="implementation"/>
         </FileInfo>
       </File>
       <Config>
-        <Option Name="TargetConstrsFile" Val="$PSRCDIR/constrs_1/imports/Downloads/Basys3_Master.xdc"/>
         <Option Name="ConstrsType" Val="XDC"/>
       </Config>
     </FileSet>
