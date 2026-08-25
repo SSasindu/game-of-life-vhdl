@@ -61,7 +61,7 @@ ARCHITECTURE main_arch OF main IS
     CONSTANT ONE_SEC_LIMIT : INTEGER := 100_000_000 - 1;
     SIGNAL sec_counter : INTEGER RANGE 0 TO ONE_SEC_LIMIT := 0;
     SIGNAL frame_color : STD_LOGIC_VECTOR(1 DOWNTO 0) := "00"; -- "00" = Black, "11" = White
-    SIGNAL cell_idx : INTEGER RANGE 0 TO TOTAL_CELLS := 0;
+    SIGNAL cell_idx : INTEGER RANGE 0 TO 1023 := 0;
 
     SIGNAL fsm_d_addr : STD_LOGIC_VECTOR(9 DOWNTO 0) := (OTHERS => '0');
     SIGNAL vga_d_addr : STD_LOGIC_VECTOR(9 DOWNTO 0) := (OTHERS => '0');
@@ -165,7 +165,9 @@ BEGIN
                         IF sec_counter = ONE_SEC_LIMIT THEN
                             sec_counter <= 0;
                             frame_color <= NOT frame_color; -- Toggle between "00" (Black) and "11" (White)
+                            b_di <= NOT frame_color; 
                             cell_idx <= 0;
+                            b_we <= '1'; 
                             state <= WRITE_BUFFER;
                         ELSE
                             sec_counter <= sec_counter + 1;
@@ -179,26 +181,38 @@ BEGIN
 
                         IF cell_idx = TOTAL_CELLS - 1 THEN
                             cell_idx <= 0;
+                            b_we <= '0'; -- Turn off write enable for next state
+                            d_we <= '0'; -- Keep display write enable off
                             state <= COPY_TO_DISPLAY;
                         ELSE
                             cell_idx <= cell_idx + 1;
                         END IF;
 
                     WHEN COPY_TO_DISPLAY =>
-                        b_we <= '0'; -- Disable write to buffer, read from it
-                        b_addr <= STD_LOGIC_VECTOR(TO_UNSIGNED(cell_idx, 10));
+                        -- Disable write to buffer, read from it
+                        b_we <= '0'; 
 
-                        -- Pipeline 1 cycle for BRAM latency, then copy to display
-                        d_we <= '1';
-                        fsm_d_addr <= STD_LOGIC_VECTOR(TO_UNSIGNED(cell_idx, 10));
-                        d_di <= b_do;
-
-                        IF cell_idx = TOTAL_CELLS - 1 THEN
-                            cell_idx <= 0;
-                            d_we <= '0';
-                            state <= IDLE;
-                        ELSE
+                        IF cell_idx = 0 THEN
+                            -- Read first address (0) from buffer array
+                            b_addr <= STD_LOGIC_VECTOR(TO_UNSIGNED(0, 10));
+                            d_we <= '0'; -- Data not ready yet
                             cell_idx <= cell_idx + 1;
+                        ELSIF cell_idx < TOTAL_CELLS THEN
+                                b_addr <= STD_LOGIC_VECTOR(TO_UNSIGNED(cell_idx, 10));
+                            fsm_d_addr <= STD_LOGIC_VECTOR(TO_UNSIGNED(cell_idx - 1, 10));
+                            d_di <= b_do;
+                            d_we <= '1';
+                            cell_idx <= cell_idx + 1;
+                        ELSIF cell_idx = TOTAL_CELLS THEN
+                            -- Write the last read data (from address 767) to display_arr(767)
+                            fsm_d_addr <= STD_LOGIC_VECTOR(TO_UNSIGNED(TOTAL_CELLS - 1, 10));
+                            d_di <= b_do;
+                            d_we <= '1';
+                            cell_idx <= cell_idx + 1;
+                        ELSE 
+                            d_we <= '0'; -- Disable write on next cycle
+                            cell_idx <= 0;
+                            state <= IDLE;
                         END IF;
 
                 END CASE;
