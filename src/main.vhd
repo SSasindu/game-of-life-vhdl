@@ -76,6 +76,9 @@ ARCHITECTURE main_arch OF main IS
     SIGNAL is_player_cell : STD_LOGIC;
     SIGNAL current_cell_x : INTEGER RANGE 0 TO 63;
     SIGNAL current_cell_y : INTEGER RANGE 0 TO 63;
+
+    -- Border marking
+    SIGNAL is_grid_line : STD_LOGIC;
 BEGIN
 
     -- Instantiate Display Memory Array
@@ -194,10 +197,9 @@ BEGIN
                         d_we <= '0';
                         IF sec_counter = ONE_SEC_LIMIT THEN
                             sec_counter <= 0;
-                            frame_color <= NOT frame_color; -- Toggle between "00" (Black) and "11" (White)
-                            b_di <= NOT frame_color; 
+                            b_di <= frame_color;
                             cell_idx <= 0;
-                            b_we <= '1'; 
+                            b_we <= '1';
                             state <= WRITE_BUFFER;
                         ELSE
                             sec_counter <= sec_counter + 1;
@@ -250,6 +252,9 @@ BEGIN
         END IF;
     END PROCESS;
 
+    -- Cell is 20x20 px. So grid line is drawn every 20 px.
+    is_grid_line <= '1' WHEN (video_on = '1' AND (h_count MOD 20 = 0 OR v_count MOD 20 = 0)) ELSE '0';
+
     -- 5. VGA Active Area Guard & Color Outputs from Display Memory
     video_on <= '1' WHEN (h_count < H_ACTIVE) AND (v_count < V_ACTIVE) ELSE
         '0';
@@ -257,12 +262,15 @@ BEGIN
     -- Green for player, White for living cells, Black for dead/inactive cells
     vga_r <= "0000" WHEN (is_player_cell = '1') ELSE
              "1111" WHEN (video_on = '1' AND d_do /= "00") ELSE
+             "0010" WHEN (is_grid_line = '1') ELSE
              "0000";
     vga_g <= "1111" WHEN (is_player_cell = '1') ELSE
              "1111" WHEN (video_on = '1' AND d_do /= "00") ELSE
+             "0010" WHEN (is_grid_line = '1') ELSE
              "0000";
     vga_b <= "0000" WHEN (is_player_cell = '1') ELSE
              "1111" WHEN (video_on = '1' AND d_do /= "00") ELSE
+             "0010" WHEN (is_grid_line = '1') ELSE
              "0000";
 
 END ARCHITECTURE main_arch;
