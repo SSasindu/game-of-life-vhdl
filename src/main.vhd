@@ -6,6 +6,10 @@ ENTITY main IS
     PORT (
         clk_100mhz : IN STD_LOGIC;
         rst : IN STD_LOGIC;
+        up : IN STD_LOGIC;
+        down : IN STD_LOGIC;
+        left : IN STD_LOGIC;
+        right : IN STD_LOGIC;
         hsync : OUT STD_LOGIC;
         vsync : OUT STD_LOGIC;
         vga_r : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
@@ -65,6 +69,16 @@ ARCHITECTURE main_arch OF main IS
 
     SIGNAL fsm_d_addr : STD_LOGIC_VECTOR(9 DOWNTO 0) := (OTHERS => '0');
     SIGNAL vga_d_addr : STD_LOGIC_VECTOR(9 DOWNTO 0) := (OTHERS => '0');
+
+    -- Player positions and status signals
+    SIGNAL player_x : INTEGER RANGE 0 TO 31;
+    SIGNAL player_y : INTEGER RANGE 0 TO 23;
+    SIGNAL is_player_cell : STD_LOGIC;
+    SIGNAL current_cell_x : INTEGER RANGE 0 TO 63;
+    SIGNAL current_cell_y : INTEGER RANGE 0 TO 63;
+
+    -- Border marking
+    SIGNAL is_grid_line : STD_LOGIC;
 BEGIN
 
     -- Instantiate Display Memory Array
@@ -87,6 +101,19 @@ BEGIN
             addr => b_addr,
             di => b_di,
             do => b_do
+        );
+
+    -- Instantiate Player Entity
+    player_inst : ENTITY work.player
+        PORT MAP(
+            clk          => clk_100mhz,
+            rst          => rst,
+            up           => up,
+            down         => down,
+            left         => left,
+            right        => right,
+            player_x_out => player_x,
+            player_y_out => player_y
         );
 
     -- 1. Clock Divider (100 MHz to 25 MHz Pixel Clock)
@@ -141,10 +168,16 @@ BEGIN
     END PROCESS;
 
     -- 3. Read Address Lookup from Display Array (Scales 640x480 to 32x24 grid)
+    current_cell_x <= h_count / 20;
+    current_cell_y <= v_count / 20;
+
     -- Grid Cell Index = (v_count / 20) * 32 + (h_count / 20)
-    vga_d_addr <= STD_LOGIC_VECTOR(TO_UNSIGNED(((v_count / 20) * GRID_WIDTH) + (h_count / 20), 10))
+    vga_d_addr <= STD_LOGIC_VECTOR(TO_UNSIGNED((current_cell_y * GRID_WIDTH) + current_cell_x, 10))
                   WHEN video_on = '1' ELSE (OTHERS => '0');
     d_addr <= fsm_d_addr WHEN state = COPY_TO_DISPLAY ELSE vga_d_addr;
+
+    -- Detect if VGA is scanning the player's cell
+    is_player_cell <= '1' WHEN (video_on = '1' AND current_cell_x = player_x AND current_cell_y = player_y) ELSE '0';
 
     -- 4. Update FSM: Writes buffer, then copies buffer to display array every 1 second
     PROCESS (clk_100mhz)
@@ -164,10 +197,9 @@ BEGIN
                         d_we <= '0';
                         IF sec_counter = ONE_SEC_LIMIT THEN
                             sec_counter <= 0;
-                            frame_color <= NOT frame_color; -- Toggle between "00" (Black) and "11" (White)
-                            b_di <= NOT frame_color; 
+                            b_di <= frame_color;
                             cell_idx <= 0;
-                            b_we <= '1'; 
+                            b_we <= '1';
                             state <= WRITE_BUFFER;
                         ELSE
                             sec_counter <= sec_counter + 1;
@@ -220,15 +252,25 @@ BEGIN
         END IF;
     END PROCESS;
 
+    -- Cell is 20x20 px. So grid line is drawn every 20 px.
+    is_grid_line <= '1' WHEN (video_on = '1' AND (h_count MOD 20 = 0 OR v_count MOD 20 = 0)) ELSE '0';
+
     -- 5. VGA Active Area Guard & Color Outputs from Display Memory
     video_on <= '1' WHEN (h_count < H_ACTIVE) AND (v_count < V_ACTIVE) ELSE
         '0';
 
-    vga_r <= "1111" WHEN (video_on = '1' AND d_do /= "00") ELSE
-        "0000";
-    vga_g <= "1111" WHEN (video_on = '1' AND d_do /= "00") ELSE
-        "0000";
-    vga_b <= "1111" WHEN (video_on = '1' AND d_do /= "00") ELSE
-        "0000";
+    -- Green for player, White for living cells, Black for dead/inactive cells
+    vga_r <= "0000" WHEN (is_player_cell = '1') ELSE
+             "1111" WHEN (video_on = '1' AND d_do /= "00") ELSE
+             "0010" WHEN (is_grid_line = '1') ELSE
+             "0000";
+    vga_g <= "1111" WHEN (is_player_cell = '1') ELSE
+             "1111" WHEN (video_on = '1' AND d_do /= "00") ELSE
+             "0010" WHEN (is_grid_line = '1') ELSE
+             "0000";
+    vga_b <= "0000" WHEN (is_player_cell = '1') ELSE
+             "1111" WHEN (video_on = '1' AND d_do /= "00") ELSE
+             "0010" WHEN (is_grid_line = '1') ELSE
+             "0000";
 
 END ARCHITECTURE main_arch;
