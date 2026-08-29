@@ -2,9 +2,9 @@
 -- Company: 
 -- Engineer: 
 -- 
--- Create Date: 07/31/2026 08:00:43 PM
+-- Create Date: 08/29/2026 08:50:45 PM
 -- Design Name: 
--- Module Name: cell_updater - Behavioral
+-- Module Name: tb_player_logic - Behavioral
 -- Project Name: 
 -- Target Devices: 
 -- Tool Versions: 
@@ -31,11 +31,11 @@ use IEEE.STD_LOGIC_1164.ALL;
 --library UNISIM;
 --use UNISIM.VComponents.all;
 
-entity cell_updater is
-    Port ( cell : in STD_LOGIC);
-end cell_updater;
+entity tb_player_logic is
+--  Port ( );
+end tb_player_logic;
 
-architecture Behavioral of cell_updater is
+architecture Behavioral of tb_player_logic is
 
 begin
 
