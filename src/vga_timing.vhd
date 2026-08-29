@@ -54,7 +54,7 @@ BEGIN
                         v_reg <= v_reg + 1;
                     END IF;
                 ELSE
-                    h_reg <= v_reg + 1;
+                    h_reg <= h_reg + 1;
                 END IF;
 
                 -- Sync signals
@@ -64,12 +64,12 @@ BEGIN
                     hsync <= '1';
                 END IF;
 
-                IF (v_reg = V_ACTIVE + V_FRONT) AND (v_reg < V_ACTIVE + V_FRONT + V_SYNC) THEN
+                IF (v_reg >= V_ACTIVE + V_FRONT) AND (v_reg < V_ACTIVE + V_FRONT + V_SYNC) THEN
                     vsync <= '0';
                 ELSE
                     vsync <= '1';
                 END IF;
             END IF;
-            end if;
-        END PROCESS;
-    END vga_timing_arch;
+        END IF;
+    END PROCESS;
+END vga_timing_arch;

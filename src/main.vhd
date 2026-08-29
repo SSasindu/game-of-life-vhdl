@@ -108,7 +108,7 @@ BEGIN
             vga_addr => vga_addr,
 
             up => up,
-            down => up,
+            down => down,
             left => left,
             right => right,
 
