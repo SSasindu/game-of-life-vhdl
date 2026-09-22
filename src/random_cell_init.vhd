@@ -1,4 +1,4 @@
-LIBRARY library IEEE;
+LIBRARY IEEE;
 USE IEEE.std_logic_1164.ALL;
 USE IEEE.numeric_std.ALL;
 USE work.game_of_life_pkg.ALL;
@@ -13,7 +13,7 @@ ENTITY random_cell_init IS
     PORT (
         clk : IN STD_LOGIC;
         done : OUT STD_LOGIC := '0';
-        we : OUT STD_LOGIC;
+        we : OUT STD_LOGIC := '0';
 
         addr : OUT STD_LOGIC_VECTOR(ADDR_WIDTH - 1 DOWNTO 0);
         di : OUT STD_LOGIC_VECTOR(DATA_WIDTH - 1 DOWNTO 0)
@@ -21,12 +21,12 @@ ENTITY random_cell_init IS
 
 END random_cell_init;
 
-ARCHITECTURE random_cell_init_arch IS
+ARCHITECTURE Behavioral of random_cell_init IS
 
     SIGNAL lfsr : STD_LOGIC_VECTOR(15 DOWNTO 0) := x"ACE1";
-
-    PROCESS (clk)
-        VARIABLE cell_idx : INTEGER RANGE 0 TO TOTAL_CELLS - 1 := 0;
+begin
+    CLOCK : PROCESS (clk)
+        VARIABLE cell_idx : INTEGER RANGE 0 TO TOTAL_CELLS := 0;
         VARIABLE feedback : STD_LOGIC;
 
     BEGIN
@@ -56,6 +56,6 @@ ARCHITECTURE random_cell_init_arch IS
             END IF;
         END IF;
 
-    END PROCESS;
+    END PROCESS CLOCK;
 
-END random_cell_init_arch;
+END Behavioral;

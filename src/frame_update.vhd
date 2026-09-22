@@ -95,12 +95,6 @@ BEGIN
                     neighbor_id <= 0;
                     neighbor_count <= 0;
                     fsm_state <= FETCH_NEIGHBOR;
-                ELSE
-                    3
-                    cell_idx <= 0;
-                    count := 0;
-                    fsm_state <= IDLE;
-            END IF;
             WHEN FETCH_NEIGHBOR =>
             CASE neighbor_id IS
                 WHEN 0 => target_row <= cur_row - 1;
