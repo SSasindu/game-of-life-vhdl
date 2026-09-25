@@ -293,3 +293,7 @@ set_property PACKAGE_PIN R19 [get_ports vsync]
 #set_property PACKAGE_PIN K19 [get_ports QspiCSn]					
 	#set_property IOSTANDARD LVCMOS33 [get_ports QspiCSn]
 
+## Configuration options for Bitstream generation
+set_property CFGBVS VCCO [current_design]
+set_property CONFIG_VOLTAGE 3.3 [current_design]
+
