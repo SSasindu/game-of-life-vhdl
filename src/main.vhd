@@ -7,6 +7,8 @@ ENTITY main IS
     PORT (
         clk_100mhz : IN STD_LOGIC;
         rst : IN STD_LOGIC;
+        sw0 : IN STD_LOGIC := '0';
+        sw1 : IN STD_LOGIC := '0';
         hsync : OUT STD_LOGIC;
         vsync : OUT STD_LOGIC;
         vga_r : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
@@ -49,7 +51,53 @@ ARCHITECTURE main_arch OF main IS
     SIGNAL vga_addr : STD_LOGIC_VECTOR(9 DOWNTO 0);
     SIGNAL vga_do : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
+    -- Random Cell Initialization
+    SIGNAL init_done  : STD_LOGIC := '1';
+    SIGNAL init_we    : STD_LOGIC := '0';
+    SIGNAL init_addr  : STD_LOGIC_VECTOR(9 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL init_di    : STD_LOGIC_VECTOR(1 DOWNTO 0) := (OTHERS => '0');
+
+    -- Switch 0 edge detector to trigger randomization when turned ON
+    SIGNAL sw0_reg1   : STD_LOGIC := '0';
+    SIGNAL sw0_reg2   : STD_LOGIC := '0';
+    SIGNAL start_init : STD_LOGIC := '0';
+
 BEGIN
+    -- Switch edge detection process
+    PROCESS (clk_100mhz, rst)
+    BEGIN
+        IF rst = '1' THEN
+            sw0_reg1 <= '0';
+            sw0_reg2 <= '0';
+            start_init <= '0';
+        ELSIF rising_edge(clk_100mhz) THEN
+            sw0_reg1 <= sw0;
+            sw0_reg2 <= sw0_reg1;
+            IF sw0_reg1 = '1' AND sw0_reg2 = '0' THEN
+                start_init <= '1';
+            ELSE
+                start_init <= '0';
+            END IF;
+        END IF;
+    END PROCESS;
+
+    random_init_inst : ENTITY work.random_cell_init
+        GENERIC MAP(
+            ADDR_WIDTH     => 10,
+            DATA_WIDTH     => 2,
+            PLAYER_START_X => 16,
+            PLAYER_START_Y => 20
+        )
+        PORT MAP(
+            clk  => clk_100mhz,
+            rst  => rst,
+            done => init_done,
+            we   => init_we,
+            addr => init_addr,
+            di   => init_di,
+            start => start_init
+        );
+
     arr_1 : ENTITY work.cell_array
         GENERIC MAP(ADDR_WIDTH => 10, DATA_WIDTH => 2)
         PORT MAP(
@@ -84,6 +132,8 @@ BEGIN
         PORT MAP(
             clk_100mhz => clk_100mhz,
             rst => rst,
+            init_done => init_done,
+            run => sw1,
             state => state,
 
             b_we => fsm_b_we,
@@ -117,22 +167,36 @@ BEGIN
             vga_b => vga_b
         );
 
-    we_1 <= fsm_b_we WHEN select_array = '1' ELSE
+    -- RAM 1 Multiplexing
+    we_1 <= init_we WHEN init_done = '0' ELSE
+        fsm_b_we WHEN select_array = '1' ELSE
         '0';
-    addr_1 <= fsm_b_addr WHEN select_array = '1' ELSE
-        fsm_d_addr WHEN (state = WAIT_READ OR state = ACCUMULATE) ELSE
-        vga_addr;
-    di_1 <= fsm_b_di;
 
-    we_2 <= fsm_b_we WHEN select_array = '0' ELSE
-        '0';
-    addr_2 <= fsm_b_addr WHEN select_array = '0' ELSE
+    addr_1 <= init_addr WHEN init_done = '0' ELSE
+        fsm_b_addr WHEN select_array = '1' ELSE
         fsm_d_addr WHEN (state = WAIT_READ OR state = ACCUMULATE) ELSE
         vga_addr;
-    di_2 <= fsm_b_di;
+
+    di_1 <= init_di WHEN init_done = '0' ELSE
+        fsm_b_di;
+
+    -- RAM 2 Multiplexing
+    we_2 <= init_we WHEN init_done = '0' ELSE
+        fsm_b_we WHEN select_array = '0' ELSE
+        '0';
+
+    addr_2 <= init_addr WHEN init_done = '0' ELSE
+        fsm_b_addr WHEN select_array = '0' ELSE
+        fsm_d_addr WHEN (state = WAIT_READ OR state = ACCUMULATE) ELSE
+        vga_addr;
+
+    di_2 <= init_di WHEN init_done = '0' ELSE
+        fsm_b_di;
 
     fsm_d_do <= do_1 WHEN select_array = '0' ELSE
         do_2;
+
     vga_do <= do_1 WHEN select_array = '0' ELSE
         do_2;
+
 END main_arch;
