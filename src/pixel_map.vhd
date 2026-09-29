@@ -69,9 +69,9 @@ BEGIN
     -- Generate read address for VGA screen scanout
     vga_addr <= STD_LOGIC_VECTOR(to_unsigned(((v_count/20) * GRID_WIDTH) + (h_count / 20), 10));
 
-    -- Green ---> Player
-    -- White ---> Live cell
-    -- Black ---> Dead cell
+    -- Green ---> Player 
+    -- White ("01") ---> Live cell
+    -- Black ("00") ---> Dead cell
     vga_r <= "0000" WHEN (is_player_cell = '1') ELSE
         "1111" WHEN (v_on = '1' AND do = "01") ELSE
         "0010" WHEN (is_grid_line = '1') ELSE

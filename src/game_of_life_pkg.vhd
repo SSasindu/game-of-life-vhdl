@@ -28,6 +28,7 @@ PACKAGE game_of_life_pkg IS
         WAIT_READ,
         ACCUMULATE,
         WRITE_RESULT,
-        NEXT_CELL
+        NEXT_CELL,
+        READ_SELF
     );
 END PACKAGE;

@@ -7,7 +7,9 @@ ENTITY frame_update IS
     PORT (
         clk_100mhz : IN STD_LOGIC;
         rst : IN STD_LOGIC;
-        state         : out state_type := IDLE;
+        init_done : IN STD_LOGIC := '1';
+        run : IN STD_LOGIC := '1';
+        state : OUT state_type := IDLE;
 
         b_we : OUT STD_LOGIC;
         b_addr : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
@@ -52,12 +54,23 @@ BEGIN
 
             CASE fsm_state IS
                 WHEN IDLE =>
+                    b_we <= '0';
                     cell_idx <= 0;
-                    count := count + 1;
-                    IF (count >= TIME_LIMIT) THEN
-                        fsm_state <= UPDATE_CELL;
-                        select_array <= NOT select_array;
+                    IF init_done = '1' AND run = '1' THEN
+                        count := count + 1;
+                        IF (count >= TIME_LIMIT) THEN
+                            count := 0;
+                            fsm_state <= UPDATE_CELL;
+                            sel_arr_reg <= NOT sel_arr_reg;
+                        END IF;
+                    ELSE
+                        count := 0;
                     END IF;
+
+                WHEN READ_SELF =>
+                    d_addr <= STD_LOGIC_VECTOR(to_unsigned(cell_idx, 10));
+                    fsm_state <= UPDATE_CELL;
+
                 WHEN UPDATE_CELL =>
                     IF cell_idx < TOTAL_CELLS THEN
                         cur_row <= cell_idx / 32;
@@ -72,31 +85,26 @@ BEGIN
                         count := 0;
                         fsm_state <= IDLE;
                     END IF;
+
                 WHEN FETCH_NEIGHBOR =>
                     CASE neighbor_id IS
-                        WHEN 0 => target_row <= cur_row - 1;
-                            target_col <= cur_col - 1;
-                        WHEN 1 => target_row <= cur_row - 1;
-                            target_col <= cur_col;
-                        WHEN 2 => target_row <= cur_row - 1;
-                            target_col <= cur_col + 1;
-                        WHEN 3 => target_row <= cur_row;
-                            target_col <= cur_col - 1;
-                        WHEN 4 => target_row <= cur_row;
-                            target_col <= cur_col + 1;
-                        WHEN 5 => target_row <= cur_row + 1;
-                            target_col <= cur_col - 1;
-                        WHEN 6 => target_row <= cur_row + 1;
-                            target_col <= cur_col;
-                        WHEN 7 => target_row <= cur_row + 1;
-                            target_col <= cur_col + 1;
+                        WHEN 0 => target_row <= cur_row - 1; target_col <= cur_col - 1;
+                        WHEN 1 => target_row <= cur_row - 1; target_col <= cur_col;
+                        WHEN 2 => target_row <= cur_row - 1; target_col <= cur_col + 1;
+                        WHEN 3 => target_row <= cur_row;     target_col <= cur_col - 1;
+                        WHEN 4 => target_row <= cur_row;     target_col <= cur_col + 1;
+                        WHEN 5 => target_row <= cur_row + 1; target_col <= cur_col - 1;
+                        WHEN 6 => target_row <= cur_row + 1; target_col <= cur_col;
+                        WHEN 7 => target_row <= cur_row + 1; target_col <= cur_col + 1;
                         WHEN OTHERS => NULL;
                     END CASE;
+
                     IF neighbor_id < 8 THEN
                         fsm_state <= WAIT_READ;
                     ELSE
                         fsm_state <= WRITE_RESULT;
                     END IF;
+
                 WHEN WAIT_READ =>
                     IF (target_row >= 0 AND target_row < 24 AND target_col >= 0 AND target_col < 32) THEN
                         d_addr <= STD_LOGIC_VECTOR(TO_UNSIGNED(target_row * 32 + target_col, 10));
@@ -104,15 +112,14 @@ BEGIN
                     fsm_state <= ACCUMULATE;
 
                 WHEN ACCUMULATE =>
-
                     IF (target_row >= 0 AND target_row < 24 AND target_col >= 0 AND target_col < 32) THEN
                         IF d_do = "01" THEN
                             neighbor_count <= neighbor_count + 1;
                         END IF;
                     END IF;
-
                     neighbor_id <= neighbor_id + 1;
                     fsm_state <= FETCH_NEIGHBOR;
+
                 WHEN WRITE_RESULT =>
                     b_addr <= STD_LOGIC_VECTOR(to_unsigned(cell_idx, 10));
 
@@ -130,6 +137,7 @@ BEGIN
                     cell_idx <= cell_idx + 1;
                     fsm_state <= UPDATE_CELL;
             END CASE;
-            end if;
+        END IF;
     END PROCESS;
+
 END ARCHITECTURE frame_update_arch;
