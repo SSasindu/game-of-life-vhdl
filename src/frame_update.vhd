@@ -18,7 +18,12 @@ ENTITY frame_update IS
         d_addr : OUT STD_LOGIC_VECTOR(9 DOWNTO 0);
         d_do : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
 
-        select_array : INOUT STD_LOGIC
+        select_array : INOUT STD_LOGIC;
+
+        neighbor_get_count : OUT STD_LOGIC;
+        neighbor_count_from_array : IN INTEGER RANGE -1 TO 9;
+        neighbor_count_available : IN STD_LOGIC;
+        neighbor_read_count : OUT STD_LOGIC;
     );
 END ENTITY frame_update;
 
@@ -73,71 +78,43 @@ BEGIN
 
                 WHEN UPDATE_CELL =>
                     IF cell_idx < TOTAL_CELLS THEN
-                        cur_row <= cell_idx / 32;
-                        cur_col <= cell_idx MOD 32;
 
-                        neighbor_id <= 0;
-                        neighbor_count <= 0;
-                        fsm_state <= FETCH_NEIGHBOR;
-                    ELSE
-                        -- Here one array update is finished
-                        cell_idx <= 0;
-                        count := 0;
-                        fsm_state <= IDLE;
-                    END IF;
-
-                WHEN FETCH_NEIGHBOR =>
-                    CASE neighbor_id IS
-                        WHEN 0 => target_row <= cur_row - 1; target_col <= cur_col - 1;
-                        WHEN 1 => target_row <= cur_row - 1; target_col <= cur_col;
-                        WHEN 2 => target_row <= cur_row - 1; target_col <= cur_col + 1;
-                        WHEN 3 => target_row <= cur_row;     target_col <= cur_col - 1;
-                        WHEN 4 => target_row <= cur_row;     target_col <= cur_col + 1;
-                        WHEN 5 => target_row <= cur_row + 1; target_col <= cur_col - 1;
-                        WHEN 6 => target_row <= cur_row + 1; target_col <= cur_col;
-                        WHEN 7 => target_row <= cur_row + 1; target_col <= cur_col + 1;
-                        WHEN OTHERS => NULL;
-                    END CASE;
-
-                    IF neighbor_id < 8 THEN
-                        fsm_state <= WAIT_READ;
-                    ELSE
-                        fsm_state <= WRITE_RESULT;
-                    END IF;
-
-                WHEN WAIT_READ =>
-                    IF (target_row >= 0 AND target_row < 24 AND target_col >= 0 AND target_col < 32) THEN
-                        d_addr <= STD_LOGIC_VECTOR(TO_UNSIGNED(target_row * 32 + target_col, 10));
-                    END IF;
-                    fsm_state <= ACCUMULATE;
-
-                WHEN ACCUMULATE =>
-                    IF (target_row >= 0 AND target_row < 24 AND target_col >= 0 AND target_col < 32) THEN
-                        IF d_do = "01" THEN
-                            neighbor_count <= neighbor_count + 1;
+                        neighbor_get_count <= '1';
+                        neighbor_read_count <= '0';
+                        IF neighbor_count_available = '1' THEN
+                            neighbor_count_from_array <= neighbor_count;
+                            fsm_state <= WRITE_RESULT;
+                            neighbor_read_count <= '1';
+                        END IF;
+                        IF neighbor_read_count = '1' THEN
+                            fsm_state <= NEXT_CELL;
                         END IF;
                     END IF;
-                    neighbor_id <= neighbor_id + 1;
-                    fsm_state <= FETCH_NEIGHBOR;
+                ELSE
+                    -- Here one array update is finished
+                    cell_idx <= 0;
+                    count := 0;
+                    fsm_state <= IDLE;
+            END IF;
 
-                WHEN WRITE_RESULT =>
-                    b_addr <= STD_LOGIC_VECTOR(to_unsigned(cell_idx, 10));
+            WHEN WRITE_RESULT =>
+            b_addr <= STD_LOGIC_VECTOR(to_unsigned(cell_idx, 10));
 
-                    IF (neighbor_count = 2 OR neighbor_count = 3) THEN
-                        b_di <= "01";
-                    ELSE
-                        b_di <= "00";
-                    END IF;
+            IF (neighbor_count = 2 OR neighbor_count = 3) THEN
+                b_di <= "01";
+            ELSE
+                b_di <= "00";
+            END IF;
 
-                    b_we <= '1';
-                    fsm_state <= NEXT_CELL;
+            b_we <= '1';
+            fsm_state <= NEXT_CELL;
 
-                WHEN NEXT_CELL =>
-                    b_we <= '0';
-                    cell_idx <= cell_idx + 1;
-                    fsm_state <= UPDATE_CELL;
-            END CASE;
-        END IF;
-    END PROCESS;
+            WHEN NEXT_CELL =>
+            b_we <= '0';
+            cell_idx <= cell_idx + 1;
+            fsm_state <= UPDATE_CELL;
+        END CASE;
+    END IF;
+END PROCESS;
 
 END ARCHITECTURE frame_update_arch;
