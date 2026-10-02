@@ -24,11 +24,7 @@ PACKAGE game_of_life_pkg IS
     TYPE state_type IS (
         IDLE,
         UPDATE_CELL,
-        FETCH_NEIGHBOR,
-        WAIT_READ,
-        ACCUMULATE,
         WRITE_RESULT,
-        NEXT_CELL,
-        READ_SELF
+        NEXT_CELL
     );
 END PACKAGE;

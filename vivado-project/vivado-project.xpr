@@ -3,7 +3,7 @@
 <!--                                                         -->
 <!-- Copyright 1986-2018 Xilinx, Inc. All Rights Reserved.   -->
 
-<Project Version="7" Minor="36" Path="D:/Git_repos/game-of-life-vhdl/vivado-project/vivado-project.xpr">
+<Project Version="7" Minor="36" Path="E:/gitRepo/game-of-life-vhdl/vivado-project/vivado-project.xpr">
   <DefaultLaunch Dir="$PRUNDIR"/>
   <Configuration>
     <Option Name="Id" Val="51d64bfa478749e8be2c00df81aa0404"/>

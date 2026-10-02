@@ -61,19 +61,21 @@ ARCHITECTURE main_arch OF main IS
     SIGNAL sw0_reg1 : STD_LOGIC := '0';
     SIGNAL sw0_reg2 : STD_LOGIC := '0';
     SIGNAL start_init : STD_LOGIC := '0';
-    -- Neighbor counting
-    n_g_a_1 : IN STD_LOGIC;
-    n_c_1 : OUT INTEGER RANGE -1 TO 9;
-    n_c_a_1 : OUT STD_LOGIC;
 
-    n_g_a_2 : IN STD_LOGIC;
-    n_c_2 : OUT INTEGER RANGE -1 TO 9;
-    n_c_a_2 : OUT STD_LOGIC;
+    SIGNAL n_g_a_1 : STD_LOGIC := '0';
+    SIGNAL n_c_1 : INTEGER RANGE -1 TO 9 := 0;
+    SIGNAL n_c_a_1 : STD_LOGIC := '0';
+    SIGNAL n_r_a_1 : STD_LOGIC := '0';
 
-    -- For the frame_update
-    n_g_a : IN STD_LOGIC;
-    n_c : OUT INTEGER RANGE -1 TO 9;
-    n_c_a : OUT STD_LOGIC;
+    SIGNAL n_g_a_2 : STD_LOGIC := '0';
+    SIGNAL n_c_2 : INTEGER RANGE -1 TO 9 := 0;
+    SIGNAL n_c_a_2 : STD_LOGIC := '0';
+    SIGNAL n_r_a_2 : STD_LOGIC := '0';
+
+    SIGNAL n_g_a : STD_LOGIC := '0';
+    SIGNAL n_c : INTEGER RANGE -1 TO 9 := 0;
+    SIGNAL n_c_a : STD_LOGIC := '0';
+    SIGNAL n_r : STD_LOGIC := '0';
 BEGIN
     -- Switch edge detection process
     PROCESS (clk_100mhz, rst)
@@ -118,10 +120,10 @@ BEGIN
             addr => addr_1,
             di => di_1,
             do => do_1,
-
             neighbor_get_count => n_g_a_1,
             neighbor_count => n_c_1,
-            neighbor_count_available => n_c_a_1
+            neighbor_count_available => n_c_a_1,
+            neighbor_read_count => n_r_a_1
         );
 
     arr_2 : ENTITY work.cell_array
@@ -132,10 +134,10 @@ BEGIN
             addr => addr_2,
             di => di_2,
             do => do_2,
-
             neighbor_get_count => n_g_a_2,
             neighbor_count => n_c_2,
-            neighbor_count_available => n_c_a_2
+            neighbor_count_available => n_c_a_2,
+            neighbor_read_count => n_r_a_2
         );
 
     vga_timing_inst : ENTITY work.vga_timing
@@ -165,8 +167,9 @@ BEGIN
 
             select_array => select_array,
             neighbor_get_count => n_g_a,
-            neighbor_count => n_c,
-            neighbor_count_available => n_c_a
+            neighbor_count_from_array => n_c,
+            neighbor_count_available => n_c_a,
+            neighbor_read_count => n_r
         );
 
     pixel_map_inst : ENTITY work.pixel_map
@@ -197,7 +200,7 @@ BEGIN
 
     addr_1 <= init_addr WHEN init_done = '0' ELSE
         fsm_b_addr WHEN select_array = '1' ELSE
-        fsm_d_addr WHEN (state = WAIT_READ OR state = ACCUMULATE) ELSE
+        fsm_d_addr WHEN (state = IDLE) ELSE
         vga_addr;
 
     di_1 <= init_di WHEN init_done = '0' ELSE
@@ -210,7 +213,7 @@ BEGIN
 
     addr_2 <= init_addr WHEN init_done = '0' ELSE
         fsm_b_addr WHEN select_array = '0' ELSE
-        fsm_d_addr WHEN (state = WAIT_READ OR state = ACCUMULATE) ELSE
+        fsm_d_addr WHEN (state = IDLE) ELSE
         vga_addr;
 
     di_2 <= init_di WHEN init_done = '0' ELSE
@@ -228,4 +231,6 @@ BEGIN
         n_g_a_2;
     n_c <= n_c_1 WHEN select_array = '0' ELSE
         n_c_2;
+    n_r <= n_r_a_1 WHEN select_array = '0' ELSE
+        n_r_a_2;
 END main_arch;
