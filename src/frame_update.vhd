@@ -20,16 +20,14 @@ ENTITY frame_update IS
 
     select_array : INOUT STD_LOGIC;
 
-    neighbor_get_count : OUT STD_LOGIC;
-    neighbor_count_from_array : IN INTEGER RANGE 0 TO 8;
-    neighbor_count_available : IN STD_LOGIC;
-    neighbor_read_count : OUT STD_LOGIC
+    neighbor_count_from_array : IN INTEGER RANGE 0 TO 8
   );
 END ENTITY frame_update;
 
 ARCHITECTURE frame_update_arch OF frame_update IS
   SIGNAL fsm_state : state_type := IDLE;
   SIGNAL cell_idx : INTEGER RANGE 0 TO 1023 := 0;
+  SIGNAL frame_delay : INTEGER RANGE 0 TO TIME_LIMIT := TIME_LIMIT;
   SIGNAL sel_arr_reg : STD_LOGIC := '0';
 BEGIN
   state <= fsm_state;
@@ -40,47 +38,46 @@ BEGIN
     IF rst = '1' THEN
       fsm_state <= IDLE;
       cell_idx <= 0;
+      frame_delay <= TIME_LIMIT;
       b_we <= '0';
       sel_arr_reg <= '0';
-      neighbor_get_count <= '0';
-      neighbor_read_count <= '0';
 
     ELSIF rising_edge(clk_100mhz) THEN
       b_we <= '0';
-      neighbor_get_count <= '0';
-      neighbor_read_count <= '0';
 
       CASE fsm_state IS
         WHEN IDLE =>
           cell_idx <= 0;
           IF init_done = '1' AND run = '1' THEN
-            sel_arr_reg <= NOT sel_arr_reg;
-            fsm_state <= UPDATE_CELL;
+            IF frame_delay = TIME_LIMIT THEN
+              frame_delay <= 0;
+              fsm_state <= UPDATE_CELL;
+            ELSE
+              frame_delay <= frame_delay + 1;
+            END IF;
+          ELSE
+            frame_delay <= TIME_LIMIT;
           END IF;
 
         WHEN UPDATE_CELL =>
           IF cell_idx < TOTAL_CELLS THEN
             d_addr <= STD_LOGIC_VECTOR(to_unsigned(cell_idx, 10));
-            neighbor_get_count <= '1';
-            IF neighbor_count_available = '1' THEN
-              fsm_state <= WRITE_RESULT;
+
+            b_addr <= STD_LOGIC_VECTOR(to_unsigned(cell_idx, 10));
+
+            IF neighbor_count_from_array = 3 OR
+              (neighbor_count_from_array = 2 AND d_do = "01") THEN
+              b_di <= "01";
+            ELSE
+              b_di <= "00";
             END IF;
+
+            b_we <= '1';
+            fsm_state <= NEXT_CELL;
           ELSE
+            sel_arr_reg <= NOT sel_arr_reg;
             fsm_state <= IDLE;
           END IF;
-
-        WHEN WRITE_RESULT =>
-          b_addr <= STD_LOGIC_VECTOR(to_unsigned(cell_idx, 10));
-
-          IF neighbor_count_from_array = 2 OR neighbor_count_from_array = 3 THEN
-            b_di <= "01";
-          ELSE
-            b_di <= "00";
-          END IF;
-
-          b_we <= '1';
-          neighbor_read_count <= '1';
-          fsm_state <= NEXT_CELL;
 
         WHEN NEXT_CELL =>
           b_we <= '0';
