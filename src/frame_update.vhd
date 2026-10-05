@@ -62,22 +62,22 @@ BEGIN
         WHEN UPDATE_CELL =>
           IF cell_idx < TOTAL_CELLS THEN
             d_addr <= STD_LOGIC_VECTOR(to_unsigned(cell_idx, 10));
-
             b_addr <= STD_LOGIC_VECTOR(to_unsigned(cell_idx, 10));
-
-            IF neighbor_count_from_array = 3 OR
-              (neighbor_count_from_array = 2 AND d_do = "01") THEN
-              b_di <= "01";
-            ELSE
-              b_di <= "00";
-            END IF;
-
-            b_we <= '1';
-            fsm_state <= NEXT_CELL;
+            fsm_state <= WRITE_RESULT;
           ELSE
             sel_arr_reg <= NOT sel_arr_reg;
             fsm_state <= IDLE;
           END IF;
+
+        WHEN WRITE_RESULT =>
+          IF neighbor_count_from_array = 3 OR
+            (neighbor_count_from_array = 2 AND d_do = "01") THEN
+            b_di <= "01";
+          ELSE
+            b_di <= "00";
+          END IF;
+          b_we <= '1';
+          fsm_state <= NEXT_CELL;
 
         WHEN NEXT_CELL =>
           b_we <= '0';
