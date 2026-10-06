@@ -25,7 +25,7 @@ END ENTITY main;
 ARCHITECTURE main_arch OF main IS
     SIGNAL state : state_type := IDLE;
     SIGNAL h_count : INTEGER RANGE 0 TO H_TOTAL - 1 := 0;
-    SIGNAL v_count : INTEGER RANGE 0 TO H_TOTAL - 1 := 0;
+    SIGNAL v_count : INTEGER RANGE 0 TO V_TOTAL - 1 := 0;
 
     -- RAM 1
     SIGNAL we_1 : STD_LOGIC := '0';
@@ -39,7 +39,7 @@ ARCHITECTURE main_arch OF main IS
     SIGNAL di_2 : STD_LOGIC_VECTOR(1 DOWNTO 0) := (OTHERS => '0');
     SIGNAL do_2 : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
-    --  
+    -- Ping-pong buffer signals
     SIGNAL select_array : STD_LOGIC := '0'; -- select_array = '0' means arr_1 is being displayed
     SIGNAL fsm_b_we : STD_LOGIC;
     SIGNAL fsm_b_addr : STD_LOGIC_VECTOR(9 DOWNTO 0);
@@ -63,11 +63,23 @@ ARCHITECTURE main_arch OF main IS
     SIGNAL start_init : STD_LOGIC := '0';
 
     SIGNAL n_c_1 : INTEGER RANGE 0 TO 8 := 0;
-
     SIGNAL n_c_2 : INTEGER RANGE 0 TO 8 := 0;
+    SIGNAL n_c   : INTEGER RANGE 0 TO 8 := 0;
 
-    SIGNAL n_c : INTEGER RANGE 0 TO 8 := 0;
+    -- Collision Detection and Game Over Signals
+    SIGNAL game_over_sig     : STD_LOGIC := '0';
+    SIGNAL survival_time_sig : INTEGER RANGE 0 TO 999 := 0;
+    SIGNAL flash_state_sig   : STD_LOGIC := '0';
+    SIGNAL player_x_sig      : INTEGER RANGE 0 TO 31 := 16;
+    SIGNAL player_y_sig      : INTEGER RANGE 0 TO 23 := 20;
+    SIGNAL effective_run     : STD_LOGIC := '0';
+    SIGNAL game_active_sig   : STD_LOGIC := '0';
+
 BEGIN
+    -- Enable Game of Life evolution only when sw1=1 and no collision has occurred
+    game_active_sig <= init_done AND sw1;
+    effective_run   <= sw1 AND (NOT game_over_sig);
+
     -- Switch edge detection process
     PROCESS (clk_100mhz, rst)
     BEGIN
@@ -140,7 +152,7 @@ BEGIN
             clk_100mhz => clk_100mhz,
             rst => rst,
             init_done => init_done,
-            run => sw1,
+            run => effective_run,
             state => state,
 
             b_we => fsm_b_we,
@@ -152,6 +164,20 @@ BEGIN
 
             select_array => select_array,
             neighbor_count_from_array => n_c
+        );
+
+    collision_inst : ENTITY work.collision_detection
+        PORT MAP(
+            clk           => clk_100mhz,
+            rst           => rst,
+            player_x      => player_x_sig,
+            player_y      => player_y_sig,
+            vga_addr      => vga_addr,
+            vga_do        => vga_do,
+            game_active   => game_active_sig,
+            game_over     => game_over_sig,
+            survival_time => survival_time_sig,
+            flash_state   => flash_state_sig
         );
 
     pixel_map_inst : ENTITY work.pixel_map
@@ -170,6 +196,13 @@ BEGIN
             left => left,
             right => right,
 
+            game_over     => game_over_sig,
+            survival_time => survival_time_sig,
+            flash_state   => flash_state_sig,
+
+            player_x_out  => player_x_sig,
+            player_y_out  => player_y_sig,
+
             vga_r => vga_r,
             vga_g => vga_g,
             vga_b => vga_b
@@ -182,7 +215,7 @@ BEGIN
 
     addr_1 <= init_addr WHEN init_done = '0' ELSE
         fsm_b_addr WHEN select_array = '1' ELSE
-        fsm_d_addr WHEN (state = UPDATE_CELL or state=WRITE_RESULT) ELSE
+        fsm_d_addr WHEN (state = UPDATE_CELL OR state = WRITE_RESULT) ELSE
         vga_addr;
 
     di_1 <= init_di WHEN init_done = '0' ELSE
@@ -195,7 +228,7 @@ BEGIN
 
     addr_2 <= init_addr WHEN init_done = '0' ELSE
         fsm_b_addr WHEN select_array = '0' ELSE
-        fsm_d_addr WHEN (state = UPDATE_CELL or state=WRITE_RESULT) ELSE
+        fsm_d_addr WHEN (state = UPDATE_CELL OR state = WRITE_RESULT) ELSE
         vga_addr;
 
     di_2 <= init_di WHEN init_done = '0' ELSE
