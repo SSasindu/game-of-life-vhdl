@@ -52,16 +52,21 @@ ARCHITECTURE main_arch OF main IS
     SIGNAL vga_do : STD_LOGIC_VECTOR(1 DOWNTO 0);
 
     -- Random Cell Initialization
-    SIGNAL init_done  : STD_LOGIC := '1';
-    SIGNAL init_we    : STD_LOGIC := '0';
-    SIGNAL init_addr  : STD_LOGIC_VECTOR(9 DOWNTO 0) := (OTHERS => '0');
-    SIGNAL init_di    : STD_LOGIC_VECTOR(1 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL init_done : STD_LOGIC := '1';
+    SIGNAL init_we : STD_LOGIC := '0';
+    SIGNAL init_addr : STD_LOGIC_VECTOR(9 DOWNTO 0) := (OTHERS => '0');
+    SIGNAL init_di : STD_LOGIC_VECTOR(1 DOWNTO 0) := (OTHERS => '0');
 
     -- Switch 0 edge detector to trigger randomization when turned ON
-    SIGNAL sw0_reg1   : STD_LOGIC := '0';
-    SIGNAL sw0_reg2   : STD_LOGIC := '0';
+    SIGNAL sw0_reg1 : STD_LOGIC := '0';
+    SIGNAL sw0_reg2 : STD_LOGIC := '0';
     SIGNAL start_init : STD_LOGIC := '0';
 
+    SIGNAL n_c_1 : INTEGER RANGE 0 TO 8 := 0;
+
+    SIGNAL n_c_2 : INTEGER RANGE 0 TO 8 := 0;
+
+    SIGNAL n_c : INTEGER RANGE 0 TO 8 := 0;
 BEGIN
     -- Switch edge detection process
     PROCESS (clk_100mhz, rst)
@@ -83,18 +88,18 @@ BEGIN
 
     random_init_inst : ENTITY work.random_cell_init
         GENERIC MAP(
-            ADDR_WIDTH     => 10,
-            DATA_WIDTH     => 2,
+            ADDR_WIDTH => 10,
+            DATA_WIDTH => 2,
             PLAYER_START_X => 16,
             PLAYER_START_Y => 20
         )
         PORT MAP(
-            clk  => clk_100mhz,
-            rst  => rst,
+            clk => clk_100mhz,
+            rst => rst,
             done => init_done,
-            we   => init_we,
+            we => init_we,
             addr => init_addr,
-            di   => init_di,
+            di => init_di,
             start => start_init
         );
 
@@ -105,7 +110,8 @@ BEGIN
             we => we_1,
             addr => addr_1,
             di => di_1,
-            do => do_1
+            do => do_1,
+            neighbor_count => n_c_1
         );
 
     arr_2 : ENTITY work.cell_array
@@ -115,7 +121,8 @@ BEGIN
             we => we_2,
             addr => addr_2,
             di => di_2,
-            do => do_2
+            do => do_2,
+            neighbor_count => n_c_2
         );
 
     vga_timing_inst : ENTITY work.vga_timing
@@ -143,14 +150,15 @@ BEGIN
             d_addr => fsm_d_addr,
             d_do => fsm_d_do,
 
-            select_array => select_array
+            select_array => select_array,
+            neighbor_count_from_array => n_c
         );
 
     pixel_map_inst : ENTITY work.pixel_map
         PORT MAP(
             h_count => h_count,
             v_count => v_count,
-            
+
             clk_100mhz => clk_100mhz,
             rst => rst,
 
@@ -174,7 +182,7 @@ BEGIN
 
     addr_1 <= init_addr WHEN init_done = '0' ELSE
         fsm_b_addr WHEN select_array = '1' ELSE
-        fsm_d_addr WHEN (state = WAIT_READ OR state = ACCUMULATE) ELSE
+        fsm_d_addr WHEN (state = UPDATE_CELL or state=WRITE_RESULT) ELSE
         vga_addr;
 
     di_1 <= init_di WHEN init_done = '0' ELSE
@@ -187,7 +195,7 @@ BEGIN
 
     addr_2 <= init_addr WHEN init_done = '0' ELSE
         fsm_b_addr WHEN select_array = '0' ELSE
-        fsm_d_addr WHEN (state = WAIT_READ OR state = ACCUMULATE) ELSE
+        fsm_d_addr WHEN (state = UPDATE_CELL or state=WRITE_RESULT) ELSE
         vga_addr;
 
     di_2 <= init_di WHEN init_done = '0' ELSE
@@ -199,4 +207,6 @@ BEGIN
     vga_do <= do_1 WHEN select_array = '0' ELSE
         do_2;
 
+    n_c <= n_c_1 WHEN select_array = '0' ELSE
+        n_c_2;
 END main_arch;
