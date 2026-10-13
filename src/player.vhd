@@ -6,6 +6,7 @@ entity player is
     Port (
         clk          : IN  STD_LOGIC;
         rst          : IN  STD_LOGIC;
+        game_over    : IN  STD_LOGIC := '0';
         up           : IN  STD_LOGIC;
         down         : IN  STD_LOGIC;
         left         : IN  STD_LOGIC;
@@ -93,14 +94,14 @@ begin
     left_pulse <= '1' when (left_sync(2) = '1' and left_deb_prev = '0' and sample_tick = '1') else '0';
     right_pulse <= '1' when (right_sync(2) = '1' and right_deb_prev = '0' and sample_tick = '1') else '0';
 
-    -- Position Registers and Boundary Checking (Clamped movements)
+    -- Position Registers and Boundary Checking (Clamped movements, disabled when game_over='1')
     process(clk)
     begin
         if rising_edge(clk) then
             if rst = '1' then
                 player_x <= 16;
                 player_y <= 20;
-            else
+            elsif game_over = '0' then
                 if left_pulse = '1' then
                     if player_x > 0 then
                         player_x <= player_x - 1;
